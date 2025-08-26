@@ -95,6 +95,6 @@ class WebSearchMessage extends Message {
   }) : super(
           content: 'Web search results for "$query"',
           type: MessageType.assistant,
-          timestamp: DateTime.now,
+          timestamp: DateTime.now(),
         );
 }
