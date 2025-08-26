@@ -1,32 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
   static const String baseUrl = 'https://ahamai-api.officialprakashkrsingh.workers.dev';
-
-  static String get _apiKey {
-    const fromEnv = String.fromEnvironment('API_KEY');
-    if (fromEnv.isNotEmpty) {
-      return fromEnv;
-    }
-    if (kDebugMode) {
-      return dotenv.env['API_KEY'] ?? '';
-    }
-    return '';
-  }
-
   static Map<String, String> get _headers {
-    final key = _apiKey;
-    if (key.isEmpty) {
-      throw Exception('API_KEY not found. Please provide it via --dart-define or in a .env file for debug mode.');
+    final apiKey = dotenv.env['API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('API_KEY not found in environment variables. Please set it in the .env file.');
     }
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $key',
+      'Authorization': 'Bearer $apiKey',
     };
   }
 
