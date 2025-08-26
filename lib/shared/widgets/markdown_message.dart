@@ -787,14 +787,14 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
+                      color: const Color(0xFF3B82F6).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       widget.language,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
-                        color: theme.colorScheme.primary,
+                        color: const Color(0xFF3B82F6),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -814,14 +814,14 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                             Icon(
                               _showPreview ? Icons.code : Icons.preview,
                               size: 16,
-                              color: theme.colorScheme.primary,
+                              color: const Color(0xFF3B82F6),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               _showPreview ? 'Code' : 'Preview',
                               style: GoogleFonts.jetBrainsMono(
                                 fontSize: 12,
-                                color: theme.colorScheme.primary,
+                                color: const Color(0xFF3B82F6),
                               ),
                             ),
                           ],

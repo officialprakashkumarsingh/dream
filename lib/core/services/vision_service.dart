@@ -56,9 +56,9 @@ class VisionService {
             },
             {
               'type': 'image_url',
-              // Per API documentation, image_url should be a string (URL or Data URI).
-              // Assuming imageData is a base64 encoded string.
-              'image_url': 'data:image/png;base64,$imageData',
+              // The imageData is already a complete data URI (e.g., "data:image/jpeg;base64,...")
+              // passed from the chat input, so we use it directly.
+              'image_url': imageData,
             },
           ],
         },

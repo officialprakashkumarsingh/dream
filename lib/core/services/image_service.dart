@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-
+import '../config/api_config.dart';
 import 'app_service.dart';
 
 class ImageService extends ChangeNotifier {
@@ -16,9 +15,9 @@ class ImageService extends ChangeNotifier {
 
   static const String baseUrl = 'https://ahamai-api.officialprakashkrsingh.workers.dev';
   static Map<String, String> get _headers {
-    final apiKey = dotenv.env['API_KEY'];
-    if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('API_KEY not found in environment variables. Please set it in the .env file.');
+    final apiKey = ApiConfig.getApiKey();
+    if (apiKey.isEmpty) {
+      throw Exception('API_KEY not found or is empty.');
     }
     return {
       'Content-Type': 'application/json',
