@@ -22,6 +22,7 @@ import '../../../core/models/quiz_message_model.dart';
 import '../../../core/models/vision_analysis_message_model.dart';
 import '../../../core/models/file_upload_message_model.dart';
 import '../../../core/services/diagram_service.dart';
+import '../../../core/services/web_search_service.dart';
 import '../../../core/services/chart_service.dart';
 import '../../../core/services/flashcard_service.dart';
 import '../../../core/services/quiz_service.dart';
@@ -780,11 +781,11 @@ class _ChatPageState extends State<ChatPage> {
               });
 
               // Now, send the results back to the AI to get a summary
-              final newHistory = _messages.map((m) => m.toApiFormat()).toList();
+              final newHistory = _messages.map((m) => m.toApiFormat()).toList().cast<Map<String, dynamic>>().toList();
               final toolResultMessage = {
                 'role': 'tool',
                 'content': jsonEncode(searchResult), // Send the full results
-                'tool_call_id': toolCall['id'],
+                'tool_call_id': toolCall['id'] as String,
               };
               newHistory.add(toolResultMessage);
 

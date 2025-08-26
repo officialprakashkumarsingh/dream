@@ -56,11 +56,11 @@ class ApiService {
   static Future<Stream<String>> sendMessage({
     required String message,
     required String model,
-    List<Map<String, String>>? conversationHistory,
+    List<Map<String, dynamic>>? conversationHistory,
     String? systemPrompt,
   }) async {
     try {
-      final messages = <Map<String, String>>[];
+      final messages = <Map<String, dynamic>>[];
       
       // Add system prompt if provided
       if (systemPrompt != null && systemPrompt.isNotEmpty) {
