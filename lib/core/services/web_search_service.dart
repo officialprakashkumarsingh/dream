@@ -17,14 +17,43 @@ class WebSearchService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return WebSearchResult.fromJson(data);
+        try {
+          final data = jsonDecode(response.body);
+          return WebSearchResult.fromJson(data);
+        } catch (e) {
+          // This is the specific parsing error case.
+          print('Error parsing web search JSON: $e');
+          print('Raw JSON response for debugging:\n${response.body}');
+          return WebSearchResult(
+            webPages: [],
+            newsArticles: [],
+            images: [],
+            hasError: true,
+            rawJson: response.body,
+          );
+        }
       } else {
-        throw Exception('Failed to perform web search: ${response.statusCode} ${response.reasonPhrase}');
+        // This is for non-200 responses.
+        print(
+            'Web search request failed with status: ${response.statusCode} ${response.reasonPhrase}');
+        return WebSearchResult(
+          webPages: [],
+          newsArticles: [],
+          images: [],
+          hasError: true,
+          rawJson: response.body, // The body might have useful error info
+        );
       }
     } catch (e) {
-      print('Error during web search: $e');
-      throw Exception('Error performing web search: $e');
+      // This catches other errors, like network issues.
+      print('An unexpected error occurred during web search: $e');
+      return WebSearchResult(
+        webPages: [],
+        newsArticles: [],
+        images: [],
+        hasError: true,
+        rawJson: '{"error": "A network or client-side error occurred: $e"}',
+      );
     }
   }
 }

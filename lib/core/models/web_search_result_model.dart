@@ -4,22 +4,36 @@ class WebSearchResult {
   final List<WebPageResult> webPages;
   final List<NewsArticleResult> newsArticles;
   final List<ImageResult> images;
+  final String? rawJson; // For debugging
+  final bool hasError;
 
   WebSearchResult({
     required this.webPages,
     required this.newsArticles,
     required this.images,
+    this.rawJson,
+    this.hasError = false,
   });
 
   factory WebSearchResult.fromJson(Map<String, dynamic> json) {
+    // Safely extract results from a nested structure like json['web']['results']
+    List<dynamic> getResults(String key) {
+      if (json.containsKey(key) &&
+          json[key] is Map &&
+          json[key].containsKey('results') &&
+          json[key]['results'] is List) {
+        return json[key]['results'];
+      }
+      return [];
+    }
+
     return WebSearchResult(
-      webPages: (json['web_results'] as List? ?? [])
-          .map((item) => WebPageResult.fromJson(item))
-          .toList(),
-      newsArticles: (json['news_results'] as List? ?? [])
+      webPages:
+          getResults('web').map((item) => WebPageResult.fromJson(item)).toList(),
+      newsArticles: getResults('news')
           .map((item) => NewsArticleResult.fromJson(item))
           .toList(),
-      images: (json['image_results'] as List? ?? [])
+      images: getResults('images')
           .map((item) => ImageResult.fromJson(item))
           .toList(),
     );
@@ -30,18 +44,21 @@ class WebPageResult {
   final String title;
   final String link;
   final String snippet;
+  final String? thumbnailUrl;
 
   WebPageResult({
     required this.title,
     required this.link,
     required this.snippet,
+    this.thumbnailUrl,
   });
 
   factory WebPageResult.fromJson(Map<String, dynamic> json) {
     return WebPageResult(
       title: json['title'] ?? '',
-      link: json['link'] ?? '',
-      snippet: json['snippet'] ?? '',
+      link: json['url'] ?? '', // Match the new API response
+      snippet: json['description'] ?? '', // Match the new API response
+      thumbnailUrl: json['thumbnail']?['src'], // Safely access nested value
     );
   }
 }
