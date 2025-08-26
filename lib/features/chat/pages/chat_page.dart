@@ -728,17 +728,19 @@ class _ChatPageState extends State<ChatPage> {
       );
 
       String accumulatedContent = '';
-      
+      bool toolCallHandled = false; // Flag to indicate a tool call was processed
+
       // Add model name header for multiple models
       if (totalModels > 1) {
         accumulatedContent = '**${_formatModelName(model)}:**\n\n';
       }
-      
+
       int chunkCount = 0;
       print('Starting to receive chunks for message at index: $messageIndex');
-      
+
       await for (final chunk in stream) {
         if (chunk.startsWith('__TOOL_CALL__')) {
+          toolCallHandled = true; // Set the flag
           // This is a tool call, not a text response.
           final toolCallJson = chunk.substring('__TOOL_CALL__'.length);
           final toolCalls = jsonDecode(toolCallJson) as List;
@@ -751,28 +753,27 @@ class _ChatPageState extends State<ChatPage> {
           if (functionName == 'generate_image') {
             final prompt = arguments['prompt'] as String;
             final imageService = ImageService.instance;
-            final model = arguments['model'] as String? ?? imageService.selectedModel;
+            final imageModel =
+                arguments['model'] as String? ?? imageService.selectedModel;
 
-            // Update the "thinking" message to an image generating message
             setState(() {
-              _messages[messageIndex] = ImageMessage.generating(prompt, model);
+              _messages[messageIndex] = ImageMessage.generating(prompt, imageModel);
             });
 
-            await _handleImageModelResponse(prompt, model, messageIndex, 1, 0);
-
+            await _handleImageModelResponse(prompt, imageModel, messageIndex, 1, 0);
           } else if (functionName == 'web_search') {
             final query = arguments['query'] as String;
 
-            // Update the "thinking" message to a "searching" message
             setState(() {
-              _messages[messageIndex] = Message.assistant('Searching the web for: "$query"...', isStreaming: true);
+              _messages[messageIndex] = Message.assistant(
+                  'Searching the web for: "$query"...',
+                  isStreaming: true);
             });
 
             try {
               final searchResult = await WebSearchService.search(query);
 
               if (searchResult.hasError) {
-                // Handle the error case from the service
                 final errorMessageContent =
                     'Sorry, the web search returned data in an unexpected format. '
                     'This might be a temporary issue with the search provider.\n\n'
@@ -781,13 +782,11 @@ class _ChatPageState extends State<ChatPage> {
 
                 setState(() {
                   _messages[messageIndex] = Message.error(errorMessageContent);
-                  // Also stop the main loading indicator if this was the last task
                   if (modelIndex == totalModels - 1) {
                     _isLoading = false;
                   }
                 });
               } else {
-                // Success case - proceed as before
                 setState(() {
                   _messages[messageIndex] = WebSearchMessage(
                     id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
@@ -796,7 +795,6 @@ class _ChatPageState extends State<ChatPage> {
                   );
                 });
 
-                // Now, send the results back to the AI to get a summary
                 final newHistory = _messages
                     .map((m) => m.toApiFormat())
                     .toList()
@@ -804,18 +802,17 @@ class _ChatPageState extends State<ChatPage> {
                     .toList();
                 final toolResultMessage = {
                   'role': 'tool',
-                  'content': jsonEncode(searchResult), // Send the full results
+                  'content': jsonEncode(searchResult),
                   'tool_call_id': toolCall['id'] as String,
                 };
                 newHistory.add(toolResultMessage);
 
                 final summaryStream = await ApiService.sendMessage(
-                  message: '', // No new user message, just summarizing tool results
+                  message: '',
                   model: model,
                   conversationHistory: newHistory,
                 );
 
-                // Add a new message bubble for the AI's summary
                 final summaryMessage = Message.assistant('', isStreaming: true);
                 _addMessage(summaryMessage);
                 final summaryMessageIndex = _messages.length - 1;
@@ -824,39 +821,40 @@ class _ChatPageState extends State<ChatPage> {
                 await for (final summaryChunk in summaryStream) {
                   summaryContent += summaryChunk;
                   setState(() {
-                    _messages[summaryMessageIndex] = _messages[
-                            summaryMessageIndex]
+                    _messages[summaryMessageIndex] = _messages[summaryMessageIndex]
                         .copyWith(content: summaryContent);
                   });
                 }
-                // Finalize the summary message
                 setState(() {
                   _messages[summaryMessageIndex] = _messages[summaryMessageIndex]
                       .copyWith(isStreaming: false);
+                  if (modelIndex == totalModels - 1) {
+                    _isLoading = false;
+                  }
                 });
               }
             } catch (e) {
-              // This will now mostly catch client-side errors before the request is even made
               setState(() {
-                _messages[messageIndex] =
-                    Message.error('Web search failed unexpectedly: ${e.toString()}');
+                _messages[messageIndex] = Message.error(
+                    'Web search failed unexpectedly: ${e.toString()}');
                 if (modelIndex == totalModels - 1) {
                   _isLoading = false;
                 }
               });
             }
           }
-          // Since a tool was called, we break the loop for this model's response.
+          // Since a tool was called, we break the loop.
           break;
         }
 
         accumulatedContent += chunk;
         chunkCount++;
-        
+
         if (chunkCount == 1) {
-          print('First chunk received: ${chunk.substring(0, chunk.length.clamp(0, 50))}...');
+          print(
+              'First chunk received: ${chunk.substring(0, chunk.length.clamp(0, 50))}...');
         }
-        
+
         if (mounted && messageIndex < _messages.length) {
           setState(() {
             _messages[messageIndex] = _messages[messageIndex].copyWith(
@@ -865,16 +863,15 @@ class _ChatPageState extends State<ChatPage> {
             );
           });
         } else {
-          print('Warning: Cannot update message - mounted: $mounted, messageIndex: $messageIndex, messages.length: ${_messages.length}');
+          print(
+              'Warning: Cannot update message - mounted: $mounted, messageIndex: $messageIndex, messages.length: ${_messages.length}');
         }
-        
-        // Smooth auto-scroll during streaming
+
         if (chunkCount % 2 == 0) {
-          // Use next frame for smoother updates
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            // Only auto-scroll if user hasn't manually scrolled away
-            if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
-              // Animate to bottom for a smoother feel than jumpTo
+            if (_autoScrollEnabled &&
+                _scrollController.hasClients &&
+                !_userIsScrolling) {
               _scrollController.animateTo(
                 0.0,
                 duration: const Duration(milliseconds: 200),
@@ -885,29 +882,35 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
 
-      // Mark streaming as complete
-      print('Streaming complete. Total chunks: $chunkCount, Content length: ${accumulatedContent.length}');
-      
+      // If a tool call was handled, the function's work is done.
+      if (toolCallHandled) {
+        return;
+      }
+
+      // This part now only executes for regular, non-tool-call responses.
+      print(
+          'Streaming complete. Total chunks: $chunkCount, Content length: ${accumulatedContent.length}');
+
       if (mounted && messageIndex < _messages.length) {
         setState(() {
           _messages[messageIndex] = _messages[messageIndex].copyWith(
             content: accumulatedContent,
             isStreaming: false,
           );
-          
-          // Set loading to false when last model completes
+
           if (modelIndex == totalModels - 1) {
             _isLoading = false;
           }
         });
         print('Message marked as complete at index: $messageIndex');
-        
-        // Save assistant message to history - don't await to avoid blocking
+
         if (messageIndex < _messages.length) {
-          ChatHistoryService.instance.saveMessage(
-            _messages[messageIndex],
-            modelName: model,
-          ).catchError((e) {
+          ChatHistoryService.instance
+              .saveMessage(
+                _messages[messageIndex],
+                modelName: model,
+              )
+              .catchError((e) {
             print('Error saving assistant message: $e');
           });
         }
@@ -918,7 +921,7 @@ class _ChatPageState extends State<ChatPage> {
           _messages[messageIndex] = Message.error(
             'Error from ${_formatModelName(model)}: Please try again.',
           );
-          
+
           if (modelIndex == totalModels - 1) {
             _isLoading = false;
           }
