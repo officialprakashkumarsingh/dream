@@ -82,26 +82,56 @@ class WebSearchResultsWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
-          child: Column(
+        child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                page.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
+            if (page.thumbnailUrl != null && page.thumbnailUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 12.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.network(
+                    page.thumbnailUrl!,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => Container(
+                      width: 50,
+                      height: 50,
+                      color:
+                          Theme.of(context).colorScheme.outline.withOpacity(0.1),
+                      child: const Icon(CupertinoIcons.globe, size: 24),
                     ),
+                    ),
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                page.snippet,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    page.title,
+                    maxLines: 2, // Allow more space for title
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    page.snippet,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
+                        ),
                     ),
+                ],
+              ),
               ),
             ],
           ),

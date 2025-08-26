@@ -771,50 +771,78 @@ class _ChatPageState extends State<ChatPage> {
             try {
               final searchResult = await WebSearchService.search(query);
 
-              // Replace the "searching" message with the results widget
-              setState(() {
-                _messages[messageIndex] = WebSearchMessage(
-                  id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
-                  query: query,
-                  searchResult: searchResult,
-                );
-              });
+              if (searchResult.hasError) {
+                // Handle the error case from the service
+                final errorMessageContent =
+                    'Sorry, the web search returned data in an unexpected format. '
+                    'This might be a temporary issue with the search provider.\n\n'
+                    '**Debug Info (for developer):**\n'
+                    '```json\n${searchResult.rawJson ?? 'No raw JSON available.'}\n```';
 
-              // Now, send the results back to the AI to get a summary
-              final newHistory = _messages.map((m) => m.toApiFormat()).toList().cast<Map<String, dynamic>>().toList();
-              final toolResultMessage = {
-                'role': 'tool',
-                'content': jsonEncode(searchResult), // Send the full results
-                'tool_call_id': toolCall['id'] as String,
-              };
-              newHistory.add(toolResultMessage);
-
-              final summaryStream = await ApiService.sendMessage(
-                message: '', // No new user message, just summarizing tool results
-                model: model,
-                conversationHistory: newHistory,
-              );
-
-              // Add a new message bubble for the AI's summary
-              final summaryMessage = Message.assistant('', isStreaming: true);
-              _addMessage(summaryMessage);
-              final summaryMessageIndex = _messages.length - 1;
-
-              String summaryContent = '';
-              await for (final summaryChunk in summaryStream) {
-                summaryContent += summaryChunk;
                 setState(() {
-                  _messages[summaryMessageIndex] = _messages[summaryMessageIndex].copyWith(content: summaryContent);
+                  _messages[messageIndex] = Message.error(errorMessageContent);
+                  // Also stop the main loading indicator if this was the last task
+                  if (modelIndex == totalModels - 1) {
+                    _isLoading = false;
+                  }
+                });
+              } else {
+                // Success case - proceed as before
+                setState(() {
+                  _messages[messageIndex] = WebSearchMessage(
+                    id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
+                    query: query,
+                    searchResult: searchResult,
+                  );
+                });
+
+                // Now, send the results back to the AI to get a summary
+                final newHistory = _messages
+                    .map((m) => m.toApiFormat())
+                    .toList()
+                    .cast<Map<String, dynamic>>()
+                    .toList();
+                final toolResultMessage = {
+                  'role': 'tool',
+                  'content': jsonEncode(searchResult), // Send the full results
+                  'tool_call_id': toolCall['id'] as String,
+                };
+                newHistory.add(toolResultMessage);
+
+                final summaryStream = await ApiService.sendMessage(
+                  message: '', // No new user message, just summarizing tool results
+                  model: model,
+                  conversationHistory: newHistory,
+                );
+
+                // Add a new message bubble for the AI's summary
+                final summaryMessage = Message.assistant('', isStreaming: true);
+                _addMessage(summaryMessage);
+                final summaryMessageIndex = _messages.length - 1;
+
+                String summaryContent = '';
+                await for (final summaryChunk in summaryStream) {
+                  summaryContent += summaryChunk;
+                  setState(() {
+                    _messages[summaryMessageIndex] = _messages[
+                            summaryMessageIndex]
+                        .copyWith(content: summaryContent);
+                  });
+                }
+                // Finalize the summary message
+                setState(() {
+                  _messages[summaryMessageIndex] = _messages[summaryMessageIndex]
+                      .copyWith(isStreaming: false);
                 });
               }
-              // Finalize the summary message
-              setState(() {
-                _messages[summaryMessageIndex] = _messages[summaryMessageIndex].copyWith(isStreaming: false);
-              });
-
             } catch (e) {
+              // This will now mostly catch client-side errors before the request is even made
               setState(() {
-                _messages[messageIndex] = Message.error('Web search failed: ${e.toString()}');
+                _messages[messageIndex] =
+                    Message.error('Web search failed unexpectedly: ${e.toString()}');
+                if (modelIndex == totalModels - 1) {
+                  _isLoading = false;
+                }
               });
             }
           }
