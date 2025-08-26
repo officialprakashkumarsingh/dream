@@ -77,13 +77,6 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
                     decoration: BoxDecoration(
                       color: dotColor.withOpacity(0.7 + (_animations[index].value * 0.3)),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: dotColor.withOpacity(0.3 * _animations[index].value),
-                          blurRadius: widget.size * 0.3,
-                          spreadRadius: widget.size * 0.1,
-                        ),
-                      ],
                     ),
                   ),
                 ),

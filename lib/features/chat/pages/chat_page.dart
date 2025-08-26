@@ -63,14 +63,15 @@ class _ChatPageState extends State<ChatPage> {
     ImageService.instance.loadModels();
     _scrollController.addListener(_onScroll);
     _initializeSession();
-    ChatHistoryService.instance.addListener(_onSessionChanged);
   }
   
   Future<void> _initializeSession() async {
     // Ensure we have an active session
     await ChatHistoryService.instance.getOrCreateActiveSession();
     // Then load any existing messages
-    _loadCurrentSession();
+    await _loadCurrentSession();
+    // Start listening for session changes only after the initial load is complete.
+    ChatHistoryService.instance.addListener(_onSessionChanged);
   }
   
   @override
@@ -170,12 +171,9 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 // Chat messages
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _isLoadingHistory
-                        ? _buildShimmerList()
-                        : (_messages.isEmpty ? _buildEmptyState() : _buildMessagesList()),
-                  ),
+                  child: _isLoadingHistory
+                      ? _buildShimmerList()
+                      : (_messages.isEmpty ? _buildEmptyState() : _buildMessagesList()),
                 ),
 
                 // Templates quick access
@@ -750,12 +748,29 @@ class _ChatPageState extends State<ChatPage> {
 
           if (functionName == 'generate_image') {
             final prompt = arguments['prompt'] as String;
+            // The AI has decided to generate an image.
+            // We don't need to add a new "user" message.
+            // We just need to add the generating placeholder and call the service.
+
             // Stop displaying the "thinking" message
             setState(() {
               _messages.removeAt(messageIndex);
             });
-            // Call the existing image generation handler
-            await _handleImageGeneration(prompt);
+
+            // Replicate the core logic of _handleImageGeneration without adding a new user message
+            final imageService = ImageService.instance;
+            // Use the model specified by the AI, or fall back to the default.
+            final model = arguments['model'] as String? ?? imageService.selectedModel;
+            final imageMessage = ImageMessage.generating(prompt, model);
+            _addMessage(imageMessage);
+
+            _handleImageModelResponse(
+              prompt,
+              model,
+              _messages.length - 1,
+              1,
+              0,
+            );
           }
           // Since a tool was called, we break the loop for this model's response.
           // The result of the tool call would typically be sent back to the AI.
