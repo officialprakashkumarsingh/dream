@@ -725,6 +725,7 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
     const terminalBgColor = Color(0xFF1E1E1E);
     const headerBgColor = Color(0xFF2D2D2D);
     const copyIconColor = Color(0xFFCCCCCC);
+    const interactiveColor = Color(0xFF3B82F6); // A bright blue for interactive elements
     
     return Container(
       decoration: BoxDecoration(
@@ -787,14 +788,14 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withOpacity(0.2),
+                      color: interactiveColor.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       widget.language,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
-                        color: const Color(0xFF3B82F6),
+                        color: interactiveColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -814,14 +815,14 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                             Icon(
                               _showPreview ? Icons.code : Icons.preview,
                               size: 16,
-                              color: const Color(0xFF3B82F6),
+                              color: interactiveColor,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               _showPreview ? 'Code' : 'Preview',
                               style: GoogleFonts.jetBrainsMono(
                                 fontSize: 12,
-                                color: const Color(0xFF3B82F6),
+                                color: interactiveColor,
                               ),
                             ),
                           ],

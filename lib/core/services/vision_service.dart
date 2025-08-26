@@ -68,6 +68,8 @@ class VisionService {
         'model': model,
         'messages': messages,
         'stream': true, // Enable streaming for vision API
+        'temperature': 0.7,
+        'max_tokens': 2000,
       };
 
       final request = http.Request('POST', Uri.parse('$baseUrl/v1/chat/completions'));
