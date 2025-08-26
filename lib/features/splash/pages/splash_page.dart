@@ -102,31 +102,18 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
-    
-    // Get theme colors
-    final backgroundColor = isDark 
-        ? themeProvider.selectedTheme.darkColors.background
-        : themeProvider.selectedTheme.lightColors.background;
-    final dotColor = isDark
-        ? themeProvider.selectedTheme.darkColors.border.withOpacity(0.3)
-        : themeProvider.selectedTheme.lightColors.border.withOpacity(0.3);
-    final textColor = isDark
-        ? themeProvider.selectedTheme.darkColors.onBackground
-        : themeProvider.selectedTheme.lightColors.onBackground;
-    final accentColor = isDark
-        ? themeProvider.selectedTheme.darkColors.primary
-        : themeProvider.selectedTheme.lightColors.primary;
+    // Use Theme.of(context) to ensure the splash screen respects the MaterialApp's theme.
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: colorScheme.background,
       body: Stack(
         children: [
           // Dotted pattern background
           CustomPaint(
             painter: DottedPatternPainter(
-              dotColor: dotColor,
+              dotColor: colorScheme.onSurface.withOpacity(0.05),
               spacing: 20,
               dotRadius: 1.5,
             ),
@@ -151,7 +138,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                               fontSize: 48,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 1,
-                              color: textColor,
+                              color: colorScheme.onBackground,
                             ),
                           ),
                           TextSpan(
@@ -160,7 +147,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                               fontSize: 44,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -1,
-                              color: accentColor,
+                              color: colorScheme.primary,
                             ),
                           ),
                         ],

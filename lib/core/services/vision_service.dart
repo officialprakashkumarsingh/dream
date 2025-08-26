@@ -56,9 +56,9 @@ class VisionService {
             },
             {
               'type': 'image_url',
-              'image_url': {
-                'url': imageData,
-              },
+              // Per API documentation, image_url should be a string (URL or Data URI).
+              // Assuming imageData is a base64 encoded string.
+              'image_url': 'data:image/png;base64,$imageData',
             },
           ],
         },
@@ -68,8 +68,6 @@ class VisionService {
         'model': model,
         'messages': messages,
         'stream': true, // Enable streaming for vision API
-        'temperature': 0.7,
-        'max_tokens': 2000,
       };
 
       final request = http.Request('POST', Uri.parse('$baseUrl/v1/chat/completions'));

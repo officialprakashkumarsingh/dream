@@ -17,7 +17,7 @@ class ChatSidebar extends StatefulWidget {
   State<ChatSidebar> createState() => _ChatSidebarState();
 }
 
-class _ChatSidebarState extends State<ChatSidebar> {
+class _ChatSidebarState extends State<ChatSidebar> with SingleTickerProviderStateMixin {
   final _historyService = ChatHistoryService.instance;
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
@@ -25,12 +25,25 @@ class _ChatSidebarState extends State<ChatSidebar> {
   bool _isSearching = false;
   bool _isLoadingMessages = false;
   
+  // Animation controller for staggered list
+  late AnimationController _listAnimationController;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controller
+    _listAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
     _historyService.addListener(_onHistoryChanged);
     _loadHistory();
     _searchController.addListener(_onSearchChanged);
+
+    // Start the animation when the widget is built
+    _listAnimationController.forward();
   }
   
   @override
@@ -39,6 +52,7 @@ class _ChatSidebarState extends State<ChatSidebar> {
     _searchController.dispose();
     _searchFocusNode.dispose();
     _historyService.removeListener(_onHistoryChanged);
+    _listAnimationController.dispose();
     super.dispose();
   }
   
@@ -576,126 +590,150 @@ class _ChatSidebarState extends State<ChatSidebar> {
                           final session = sessions[index];
                           final isSelected = session.id == currentSessionId;
                           
-                          return Dismissible(
-                            key: Key(session.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              color: Colors.red.withOpacity(0.1),
-                              child: Icon(
-                                Icons.delete_outline,
-                                color: Colors.red.withOpacity(0.7),
+                          // Staggered animation for each item
+                          final animation = Tween<double>(
+                            begin: 0.0,
+                            end: 1.0,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: _listAnimationController,
+                              curve: Interval(
+                                (1 / sessions.length) * index * 0.5,
+                                1.0,
+                                curve: Curves.easeOutCubic,
                               ),
                             ),
-                            confirmDismiss: (direction) async {
-                              return await showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Delete Chat'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this conversation?',
+                          );
+
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.2, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: Dismissible(
+                                key: Key(session.id),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  color: Colors.red.withOpacity(0.1),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red.withOpacity(0.7),
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
+                                ),
+                                confirmDismiss: (direction) async {
+                                  return await showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Delete Chat'),
+                                      content: const Text(
+                                        'Are you sure you want to delete this conversation?',
                                       ),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            onDismissed: (direction) {
-                              _historyService.deleteSession(session.id);
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              child: Material(
-                                color: isSelected
-                                    ? theme.colorScheme.primary.withOpacity(0.1)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                                                            child: InkWell(
-                              onTap: () {
-                                widget.onSessionSelected(session.id);
-                                Navigator.pop(context);
-                              },
-                              onLongPress: () {
-                                _showSessionOptions(context, session);
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        if (session.isPinned ?? false) ...[
-                                          Icon(
-                                            Icons.push_pin,
-                                            size: 14,
-                                            color: theme.colorScheme.primary
-                                                .withOpacity(0.7),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context, true),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.red,
                                           ),
-                                          const SizedBox(width: 6),
-                                        ],
-                                        Expanded(
-                                          child: Text(
-                                            _truncateTitle(session.title),
-                                            style: theme.textTheme.bodyMedium?.copyWith(
-                                              fontWeight: isSelected
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w500,
-                                              color: isSelected
-                                                  ? theme.colorScheme.primary
-                                                  : theme.colorScheme.onSurface,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                                          child: const Text('Delete'),
                                         ),
                                       ],
                                     ),
-                                        const SizedBox(height: 4),
+                                  );
+                                },
+                                onDismissed: (direction) {
+                                  _historyService.deleteSession(session.id);
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  child: Material(
+                                    color: isSelected
+                                        ? theme.colorScheme.primary.withOpacity(0.1)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                                                child: InkWell(
+                                  onTap: () {
+                                    widget.onSessionSelected(session.id);
+                                    Navigator.pop(context);
+                                  },
+                                  onLongPress: () {
+                                    _showSessionOptions(context, session);
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
                                         Row(
                                           children: [
-                                            const SizedBox(width: 24),
-                                            Text(
-                                              _formatDate(session.updatedAt),
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                color: theme.colorScheme.onSurface
-                                                    .withOpacity(0.5),
-                                                fontSize: 11,
+                                            if (session.isPinned ?? false) ...[
+                                              Icon(
+                                                Icons.push_pin,
+                                                size: 14,
+                                                color: theme.colorScheme.primary
+                                                    .withOpacity(0.7),
+                                              ),
+                                              const SizedBox(width: 6),
+                                            ],
+                                            Expanded(
+                                              child: Text(
+                                                _truncateTitle(session.title),
+                                                style: theme.textTheme.bodyMedium?.copyWith(
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w500,
+                                                  color: isSelected
+                                                      ? theme.colorScheme.primary
+                                                      : theme.colorScheme.onSurface,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
-                                            if (session.messageCount > 0) ...[
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                '• ${session.messageCount} messages',
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.onSurface
-                                                      .withOpacity(0.5),
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ],
                                           ],
                                         ),
-                                      ],
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const SizedBox(width: 24),
+                                                Text(
+                                                  _formatDate(session.updatedAt),
+                                                  style: theme.textTheme.bodySmall?.copyWith(
+                                                    color: theme.colorScheme.onSurface
+                                                        .withOpacity(0.5),
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                if (session.messageCount > 0) ...[
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    '• ${session.messageCount} messages',
+                                                    style: theme.textTheme.bodySmall?.copyWith(
+                                                      color: theme.colorScheme.onSurface
+                                                          .withOpacity(0.5),
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
