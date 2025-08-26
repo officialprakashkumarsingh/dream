@@ -88,7 +88,7 @@ class WebSearchMessage extends Message {
   final WebSearchResult searchResult;
   final String query;
 
-  const WebSearchMessage({
+  WebSearchMessage({
     required super.id,
     required this.query,
     required this.searchResult,

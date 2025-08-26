@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   static const String baseUrl = 'https://ahamai-api.officialprakashkrsingh.workers.dev';
-  static Map<String, String> get _headers {
+  static Map<String, String> get headers {
     final apiKey = dotenv.env['API_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('API_KEY not found in environment variables. Please set it in the .env file.');
@@ -22,7 +22,7 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/v1/models'),
-        headers: _headers,
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -133,7 +133,7 @@ class ApiService {
         Uri.parse('$baseUrl/v1/chat/completions'),
       );
       
-      request.headers.addAll(_headers);
+      request.headers.addAll(headers);
       request.body = jsonEncode(requestBody);
 
       final streamedResponse = await request.send();
@@ -197,7 +197,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/v1/images/generations'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'prompt': prompt,
           'model': model,
