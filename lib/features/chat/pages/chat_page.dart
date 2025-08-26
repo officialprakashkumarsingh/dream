@@ -983,10 +983,12 @@ class _ChatPageState extends State<ChatPage> {
 
       final messageIndex = analyzingIndex;
       String fullResponse = '';
+      int chunkCount = 0;
       
       await for (final chunk in stream) {
         if (mounted) {
           fullResponse += chunk;
+          chunkCount++;
           setState(() {
             // Update the message in-place
             final currentMessage = _messages[messageIndex];
@@ -997,7 +999,19 @@ class _ChatPageState extends State<ChatPage> {
               );
             }
           });
-          _scrollToBottom();
+
+          // Smooth auto-scroll during streaming without vibration
+          if (chunkCount % 2 == 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
+                _scrollController.animateTo(
+                  0.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            });
+          }
         }
       }
 

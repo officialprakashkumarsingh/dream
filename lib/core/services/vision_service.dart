@@ -64,8 +64,10 @@ class VisionService {
             {
               'type': 'image_url',
               // The imageData is already a complete data URI (e.g., "data:image/jpeg;base64,...")
-              // passed from the chat input, so we use it directly.
-              'image_url': imageData,
+              // passed from the chat input. Using the OpenAI-compatible format.
+              'image_url': {
+                'url': imageData,
+              },
             },
           ],
         },
@@ -76,7 +78,6 @@ class VisionService {
         'messages': messages,
         'stream': true, // Enable streaming for vision API
         'temperature': 0.7,
-        'max_tokens': 2000,
       };
 
       final request = http.Request('POST', Uri.parse('$baseUrl/v1/chat/completions'));
