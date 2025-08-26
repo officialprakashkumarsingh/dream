@@ -547,9 +547,7 @@ class _ChatSidebarState extends State<ChatSidebar> with SingleTickerProviderStat
           // Chat sessions list
           Expanded(
             child: _historyService.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? _SidebarShimmerList()
                 : sessions.isEmpty
                     ? Center(
                         child: Column(
@@ -791,6 +789,56 @@ class _ChatSidebarState extends State<ChatSidebar> with SingleTickerProviderStat
                   fontSize: 13,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarShimmerList extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: 10, // Show a decent number of shimmer items
+      itemBuilder: (context, index) {
+        return const _ShimmerItem();
+      },
+    );
+  }
+}
+
+class _ShimmerItem extends StatelessWidget {
+  const _ShimmerItem();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final shimmerColor = theme.colorScheme.surfaceVariant.withOpacity(0.5);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            height: 16,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 100,
+            height: 12,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
         ],

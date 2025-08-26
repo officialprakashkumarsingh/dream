@@ -169,9 +169,12 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 // Chat messages
                 Expanded(
-                  child: _isLoadingHistory
-                      ? _buildShimmerList()
-                      : (_messages.isEmpty ? _buildEmptyState() : _buildMessagesList()),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _isLoadingHistory
+                        ? _buildShimmerList()
+                        : (_messages.isEmpty ? _buildEmptyState() : _buildMessagesList()),
+                  ),
                 ),
 
                 // Templates quick access
@@ -446,7 +449,6 @@ class _ChatPageState extends State<ChatPage> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
-      HapticFeedback.lightImpact();
     }
   }
 
@@ -736,6 +738,30 @@ class _ChatPageState extends State<ChatPage> {
       print('Starting to receive chunks for message at index: $messageIndex');
       
       await for (final chunk in stream) {
+        if (chunk.startsWith('__TOOL_CALL__')) {
+          // This is a tool call, not a text response.
+          final toolCallJson = chunk.substring('__TOOL_CALL__'.length);
+          final toolCalls = jsonDecode(toolCallJson) as List;
+          final toolCall = toolCalls.first; // Assuming one tool call for now
+          final functionCall = toolCall['function'];
+          final functionName = functionCall['name'];
+          final arguments = jsonDecode(functionCall['arguments']);
+
+          if (functionName == 'generate_image') {
+            final prompt = arguments['prompt'] as String;
+            // Stop displaying the "thinking" message
+            setState(() {
+              _messages.removeAt(messageIndex);
+            });
+            // Call the existing image generation handler
+            await _handleImageGeneration(prompt);
+          }
+          // Since a tool was called, we break the loop for this model's response.
+          // The result of the tool call would typically be sent back to the AI.
+          // For simplicity here, we'll just let the image generation create a new message.
+          break;
+        }
+
         accumulatedContent += chunk;
         chunkCount++;
         

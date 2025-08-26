@@ -23,7 +23,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     super.initState();
     
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2500), // User requested 2.5 seconds
+      duration: const Duration(milliseconds: 1000), // User requested 1 second
       vsync: this,
     );
     
@@ -39,7 +39,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     final maintenanceInfo = await MaintenanceService.checkMaintenanceStatus();
     
     // Wait for animation and minimum splash duration
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
     
     if (mounted) {
       // Check if maintenance mode is active
