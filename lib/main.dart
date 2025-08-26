@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'core/services/app_service.dart';
@@ -12,6 +14,11 @@ import 'utils/app_scroll_behavior.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load .env file only in debug mode for local development
+  if (kDebugMode) {
+    await dotenv.load(fileName: ".env");
+  }
   
   // Initialize core services
   await AppService.initialize();
