@@ -1,3 +1,5 @@
+import 'web_search_result_model.dart';
+
 enum MessageType { user, assistant }
 
 class Message {
@@ -79,4 +81,20 @@ class Message {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+// A special message type to hold web search results
+class WebSearchMessage extends Message {
+  final WebSearchResult searchResult;
+  final String query;
+
+  const WebSearchMessage({
+    required super.id,
+    required this.query,
+    required this.searchResult,
+  }) : super(
+          content: 'Web search results for "$query"',
+          type: MessageType.assistant,
+          timestamp: DateTime.now,
+        );
 }

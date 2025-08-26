@@ -721,11 +721,15 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    // Use fixed dark theme colors for the terminal UI
+    const terminalBgColor = Color(0xFF1E1E1E);
+    const headerBgColor = Color(0xFF2D2D2D);
+    const copyIconColor = Color(0xFFCCCCCC);
+    const interactiveColor = Color(0xFF3B82F6); // A bright blue for interactive elements
     
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF282C34),
+        color: terminalBgColor, // Always dark
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: theme.colorScheme.outline.withOpacity(0.2),
@@ -738,9 +742,9 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
           // Terminal header with language and copy button
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFF21252B),
-              borderRadius: const BorderRadius.only(
+            decoration: const BoxDecoration(
+              color: headerBgColor, // Always dark
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(8),
                 topRight: Radius.circular(8),
               ),
@@ -784,14 +788,14 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
+                      color: interactiveColor.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       widget.language,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
-                        color: theme.colorScheme.primary,
+                        color: interactiveColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -811,14 +815,14 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                             Icon(
                               _showPreview ? Icons.code : Icons.preview,
                               size: 16,
-                              color: theme.colorScheme.primary,
+                              color: interactiveColor,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               _showPreview ? 'Code' : 'Preview',
                               style: GoogleFonts.jetBrainsMono(
                                 fontSize: 12,
-                                color: theme.colorScheme.primary,
+                                color: interactiveColor,
                               ),
                             ),
                           ],
@@ -843,7 +847,7 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                             size: 16,
                             color: _copied 
                                 ? Colors.green 
-                                : theme.colorScheme.onSurface.withOpacity(0.7),
+                                : copyIconColor,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -852,7 +856,7 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
                               fontSize: 12,
                               color: _copied 
                                   ? Colors.green 
-                                  : theme.colorScheme.onSurface.withOpacity(0.7),
+                                  : copyIconColor,
                             ),
                           ),
                         ],

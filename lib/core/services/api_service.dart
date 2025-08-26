@@ -86,6 +86,46 @@ class ApiService {
         'messages': messages,
         'stream': true,
         'temperature': 0.7,
+        'tools': [
+          {
+            'type': 'function',
+            'function': {
+              'name': 'generate_image',
+              'description': 'Generate an image based on a user prompt. Use this when the user asks to create, draw, or generate a picture, image, or art.',
+              'parameters': {
+                'type': 'object',
+                'properties': {
+                  'prompt': {
+                    'type': 'string',
+                    'description': 'A detailed description of the image to generate.',
+                  },
+                  'model': {
+                    'type': 'string',
+                    'description': 'The specific model to use for generation, if the user requests one.',
+                  }
+                },
+                'required': ['prompt'],
+              },
+            }
+          },
+          {
+            'type': 'function',
+            'function': {
+              'name': 'web_search',
+              'description': 'Search the web for up-to-date information on a topic, including news and images.',
+              'parameters': {
+                'type': 'object',
+                'properties': {
+                  'query': {
+                    'type': 'string',
+                    'description': 'The search query or topic.',
+                  }
+                },
+                'required': ['query'],
+              },
+            }
+          }
+        ]
       };
 
       final request = http.Request(
@@ -116,10 +156,21 @@ class ApiService {
               
               final json = jsonDecode(data);
               final delta = json['choices']?[0]?['delta'];
-              final content = delta?['content'] ?? '';
               
-              if (content.isNotEmpty) {
-                controller.add(content);
+              // Handle regular text content
+              if (delta?['content'] != null) {
+                final content = delta['content'] as String;
+                if (content.isNotEmpty) {
+                  controller.add(content);
+                }
+              }
+
+              // Handle tool calls
+              if (delta?['tool_calls'] != null) {
+                // The API is asking to use a tool.
+                // We'll encode this as a special string and handle it on the client.
+                final toolCalls = jsonEncode(delta['tool_calls']);
+                controller.add('__TOOL_CALL__$toolCalls');
               }
             } catch (e) {
               // Skip malformed chunks

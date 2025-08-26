@@ -1,6 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/maintenance_service.dart';
 
 class MaintenancePage extends StatefulWidget {
@@ -78,13 +78,11 @@ class _MaintenancePageState extends State<MaintenancePage>
                     
                     const SizedBox(height: 32),
                     
-                    // Title with coding style font
+                    // Title with iOS-style font
                     Text(
                       widget.maintenanceInfo.title,
-                      style: GoogleFonts.sourceCodePro(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 2,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onBackground,
                       ),
                       textAlign: TextAlign.center,
@@ -100,6 +98,7 @@ class _MaintenancePageState extends State<MaintenancePage>
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onBackground.withOpacity(0.7),
                           height: 1.5,
+                          fontWeight: FontWeight.normal,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -144,7 +143,7 @@ class _MaintenancePageState extends State<MaintenancePage>
         RotationTransition(
           turns: _gearController,
           child: Icon(
-            Icons.settings,
+            CupertinoIcons.gear_solid,
             size: 60,
             color: theme.colorScheme.primary.withOpacity(0.3),
           ),
@@ -159,7 +158,7 @@ class _MaintenancePageState extends State<MaintenancePage>
             color: theme.colorScheme.primary.withOpacity(0.15),
           ),
           child: Icon(
-            Icons.build_circle_outlined,
+            CupertinoIcons.wrench_fill,
             size: 40,
             color: theme.colorScheme.primary,
           ),
@@ -179,7 +178,7 @@ class _MaintenancePageState extends State<MaintenancePage>
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.access_time,
+            CupertinoIcons.clock,
             size: 18,
             color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
@@ -246,7 +245,7 @@ class _MaintenancePageState extends State<MaintenancePage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.email_outlined,
+                  CupertinoIcons.mail,
                   size: 16,
                   color: theme.colorScheme.primary,
                 ),

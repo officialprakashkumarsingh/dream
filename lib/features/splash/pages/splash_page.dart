@@ -17,33 +17,15 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
     
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1000), // User requested 1 second
       vsync: this,
     );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-    ));
-    
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
-    ));
     
     _animationController.forward();
     _initializeApp();
@@ -57,7 +39,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     final maintenanceInfo = await MaintenanceService.checkMaintenanceStatus();
     
     // Wait for animation and minimum splash duration
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
     
     if (mounted) {
       // Check if maintenance mode is active
@@ -102,70 +84,34 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
-    
-    // Get theme colors
-    final backgroundColor = isDark 
-        ? themeProvider.selectedTheme.darkColors.background
-        : themeProvider.selectedTheme.lightColors.background;
-    final dotColor = isDark
-        ? themeProvider.selectedTheme.darkColors.border.withOpacity(0.3)
-        : themeProvider.selectedTheme.lightColors.border.withOpacity(0.3);
-    final textColor = isDark
-        ? themeProvider.selectedTheme.darkColors.onBackground
-        : themeProvider.selectedTheme.lightColors.onBackground;
-    final accentColor = isDark
-        ? themeProvider.selectedTheme.darkColors.primary
-        : themeProvider.selectedTheme.lightColors.primary;
+    // Use Theme.of(context) to ensure the splash screen respects the MaterialApp's theme.
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: colorScheme.background,
       body: Stack(
         children: [
           // Dotted pattern background
           CustomPaint(
             painter: DottedPatternPainter(
-              dotColor: dotColor,
+              dotColor: colorScheme.onSurface.withOpacity(0.05),
               spacing: 20,
               dotRadius: 1.5,
             ),
             child: Container(),
           ),
           
-          // Logo
+          // Animated Triangle Logo
           Center(
             child: AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'अहम्',
-                            style: GoogleFonts.poppins(
-                              fontSize: 48,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1,
-                              color: textColor,
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'AI',
-                            style: GoogleFonts.inter(
-                              fontSize: 44,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1,
-                              color: accentColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                return CustomPaint(
+                  size: const Size(100, 100),
+                  painter: TrianglePainter(
+                    animation: _animationController.value,
+                    color: colorScheme.primary,
                   ),
                 );
               },
@@ -174,6 +120,68 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         ],
       ),
     );
+  }
+}
+
+class TrianglePainter extends CustomPainter {
+  final double animation;
+  final Color color;
+
+  TrianglePainter({required this.animation, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+
+    // Define the three points of the triangle
+    final p1 = Offset(size.width / 2, 0);
+    final p2 = Offset(size.width, size.height);
+    final p3 = Offset(0, size.height);
+
+    // Calculate the total length of the triangle perimeter
+    final l1 = (p2 - p1).distance; // top to bottom-right
+    final l2 = (p3 - p2).distance; // bottom-right to bottom-left
+    final l3 = (p1 - p3).distance; // bottom-left to top
+    final totalLength = l1 + l2 + l3;
+
+    // Determine how much of the path to draw based on animation
+    final animatedLength = animation * totalLength;
+
+    // Draw first side (p1 to p2)
+    if (animatedLength > 0) {
+      final endPoint = p1 + (p2 - p1) * (animatedLength.clamp(0, l1) / l1);
+      path.moveTo(p1.dx, p1.dy);
+      path.lineTo(endPoint.dx, endPoint.dy);
+    }
+
+    // Draw second side (p2 to p3)
+    if (animatedLength > l1) {
+      final lengthOnSide2 = (animatedLength - l1).clamp(0, l2);
+      final endPoint = p2 + (p3 - p2) * (lengthOnSide2 / l2);
+      path.moveTo(p2.dx, p2.dy);
+      path.lineTo(endPoint.dx, endPoint.dy);
+    }
+
+    // Draw third side (p3 to p1)
+    if (animatedLength > l1 + l2) {
+      final lengthOnSide3 = (animatedLength - l1 - l2).clamp(0, l3);
+      final endPoint = p3 + (p1 - p3) * (lengthOnSide3 / l3);
+      path.moveTo(p3.dx, p3.dy);
+      path.lineTo(endPoint.dx, endPoint.dy);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant TrianglePainter oldDelegate) {
+    return animation != oldDelegate.animation || color != oldDelegate.color;
   }
 }
 

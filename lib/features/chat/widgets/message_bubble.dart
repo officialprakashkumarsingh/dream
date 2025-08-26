@@ -20,6 +20,8 @@ import '../../../core/models/chart_message_model.dart';
 import '../../../core/models/flashcard_message_model.dart';
 import '../../../core/models/quiz_message_model.dart';
 import '../../../core/models/vision_analysis_message_model.dart';
+import '../../../core/models/web_search_result_model.dart';
+import 'web_search_results_widget.dart';
 import '../../../shared/widgets/markdown_message.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../shared/widgets/thinking_animation.dart';
@@ -320,6 +322,11 @@ class _MessageBubbleState extends State<MessageBubble>
                   _buildQuizContent(widget.message as QuizMessage),
                 ] else if (widget.message is VisionAnalysisMessage) ...[
                   _buildVisionAnalysisContent(widget.message as VisionAnalysisMessage),
+                ] else if (widget.message is WebSearchMessage) ...[
+                  WebSearchResultsWidget(
+                    result: (widget.message as WebSearchMessage).searchResult,
+                    query: (widget.message as WebSearchMessage).query,
+                  ),
                 ] else ...[
                   // Regular message content with markdown support
                   MarkdownMessage(
@@ -826,51 +833,8 @@ class _MessageBubbleState extends State<MessageBubble>
   }
 
   Widget _buildUploadedImage(String imageData) {
-    try {
-      final base64Data = imageData.split(',')[1];
-      final bytes = base64Decode(base64Data);
-      return Image.memory(
-        bytes,
-        width: 200,
-        height: 200,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.error.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                'Invalid image',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      return Container(
-        width: 200,
-        height: 200,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.error.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            'Invalid image',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.error,
-            ),
-          ),
-        ),
-      );
-    }
+    // Use a stateful widget to decode the image only once.
+    return _DecodedImage(imageData: imageData);
   }
 
   Widget _buildVisionAnalysisContent(VisionAnalysisMessage message) {
@@ -882,6 +846,66 @@ class _MessageBubbleState extends State<MessageBubble>
         isUser: false,
       );
     }
+  }
+}
+
+// A stateful widget to decode and display a base64 image once.
+class _DecodedImage extends StatefulWidget {
+  final String imageData;
+
+  const _DecodedImage({required this.imageData});
+
+  @override
+  _DecodedImageState createState() => _DecodedImageState();
+}
+
+class _DecodedImageState extends State<_DecodedImage> {
+  Uint8List? _imageBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _decodeImage();
+  }
+
+  void _decodeImage() {
+    try {
+      final base64Data = widget.imageData.split(',')[1];
+      _imageBytes = base64Decode(base64Data);
+    } catch (e) {
+      // If decoding fails, _imageBytes will remain null
+      print('Error decoding base64 image: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_imageBytes == null) {
+      return Container(
+        width: 200,
+        height: 200,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            'Invalid image data',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Image.memory(
+      _imageBytes!,
+      width: 200,
+      height: 200,
+      fit: BoxFit.cover,
+      gaplessPlayback: true, // Helps prevent blinking
+    );
   }
 }
 

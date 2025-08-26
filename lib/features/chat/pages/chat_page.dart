@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,14 +63,15 @@ class _ChatPageState extends State<ChatPage> {
     ImageService.instance.loadModels();
     _scrollController.addListener(_onScroll);
     _initializeSession();
-    ChatHistoryService.instance.addListener(_onSessionChanged);
   }
   
   Future<void> _initializeSession() async {
     // Ensure we have an active session
     await ChatHistoryService.instance.getOrCreateActiveSession();
     // Then load any existing messages
-    _loadCurrentSession();
+    await _loadCurrentSession();
+    // Start listening for session changes only after the initial load is complete.
+    ChatHistoryService.instance.addListener(_onSessionChanged);
   }
   
   @override
@@ -446,7 +448,6 @@ class _ChatPageState extends State<ChatPage> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
-      HapticFeedback.lightImpact();
     }
   }
 
@@ -736,6 +737,90 @@ class _ChatPageState extends State<ChatPage> {
       print('Starting to receive chunks for message at index: $messageIndex');
       
       await for (final chunk in stream) {
+        if (chunk.startsWith('__TOOL_CALL__')) {
+          // This is a tool call, not a text response.
+          final toolCallJson = chunk.substring('__TOOL_CALL__'.length);
+          final toolCalls = jsonDecode(toolCallJson) as List;
+          final toolCall = toolCalls.first; // Assuming one tool call for now
+          final functionCall = toolCall['function'];
+          final functionName = functionCall['name'];
+          final arguments = jsonDecode(functionCall['arguments']);
+
+          // --- HANDLE TOOL CALLS ---
+          if (functionName == 'generate_image') {
+            final prompt = arguments['prompt'] as String;
+            final imageService = ImageService.instance;
+            final model = arguments['model'] as String? ?? imageService.selectedModel;
+
+            // Update the "thinking" message to an image generating message
+            setState(() {
+              _messages[messageIndex] = ImageMessage.generating(prompt, model);
+            });
+
+            await _handleImageModelResponse(prompt, model, messageIndex, 1, 0);
+
+          } else if (functionName == 'web_search') {
+            final query = arguments['query'] as String;
+
+            // Update the "thinking" message to a "searching" message
+            setState(() {
+              _messages[messageIndex] = Message.assistant('Searching the web for: "$query"...', isStreaming: true);
+            });
+
+            try {
+              final searchResult = await WebSearchService.search(query);
+
+              // Replace the "searching" message with the results widget
+              setState(() {
+                _messages[messageIndex] = WebSearchMessage(
+                  id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
+                  query: query,
+                  searchResult: searchResult,
+                );
+              });
+
+              // Now, send the results back to the AI to get a summary
+              final newHistory = _messages.map((m) => m.toApiFormat()).toList();
+              final toolResultMessage = {
+                'role': 'tool',
+                'content': jsonEncode(searchResult), // Send the full results
+                'tool_call_id': toolCall['id'],
+              };
+              newHistory.add(toolResultMessage);
+
+              final summaryStream = await ApiService.sendMessage(
+                message: '', // No new user message, just summarizing tool results
+                model: model,
+                conversationHistory: newHistory,
+              );
+
+              // Add a new message bubble for the AI's summary
+              final summaryMessage = Message.assistant('', isStreaming: true);
+              _addMessage(summaryMessage);
+              final summaryMessageIndex = _messages.length - 1;
+
+              String summaryContent = '';
+              await for (final summaryChunk in summaryStream) {
+                summaryContent += summaryChunk;
+                setState(() {
+                  _messages[summaryMessageIndex] = _messages[summaryMessageIndex].copyWith(content: summaryContent);
+                });
+              }
+              // Finalize the summary message
+              setState(() {
+                _messages[summaryMessageIndex] = _messages[summaryMessageIndex].copyWith(isStreaming: false);
+              });
+
+            } catch (e) {
+              setState(() {
+                _messages[messageIndex] = Message.error('Web search failed: ${e.toString()}');
+              });
+            }
+          }
+          // Since a tool was called, we break the loop for this model's response.
+          break;
+        }
+
         accumulatedContent += chunk;
         chunkCount++;
         
@@ -760,8 +845,12 @@ class _ChatPageState extends State<ChatPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             // Only auto-scroll if user hasn't manually scrolled away
             if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
-              // Jump to bottom (0.0) instantly during streaming for ultra smooth experience
-              _scrollController.jumpTo(0.0);
+              // Animate to bottom for a smoother feel than jumpTo
+              _scrollController.animateTo(
+                0.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+              );
             }
           });
         }
@@ -979,10 +1068,12 @@ class _ChatPageState extends State<ChatPage> {
 
       final messageIndex = analyzingIndex;
       String fullResponse = '';
+      int chunkCount = 0;
       
       await for (final chunk in stream) {
         if (mounted) {
           fullResponse += chunk;
+          chunkCount++;
           setState(() {
             // Update the message in-place
             final currentMessage = _messages[messageIndex];
@@ -993,7 +1084,19 @@ class _ChatPageState extends State<ChatPage> {
               );
             }
           });
-          _scrollToBottom();
+
+          // Smooth auto-scroll during streaming without vibration
+          if (chunkCount % 2 == 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
+                _scrollController.animateTo(
+                  0.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            });
+          }
         }
       }
 

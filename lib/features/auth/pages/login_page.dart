@@ -351,15 +351,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                       const curve = Curves.easeOutCubic;
                                       
                                       var tween = Tween(begin: begin, end: end).chain(
-                                        CurveTween(curve: curve),
+                                        CurveTween(curve: Curves.easeInOut),
                                       );
                                       
-                                      return SlideTransition(
-                                        position: animation.drive(tween),
-                                        child: child,
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: animation.drive(tween),
+                                          child: child,
+                                        ),
                                       );
                                     },
-                                    transitionDuration: const Duration(milliseconds: 400),
+                                    transitionDuration: const Duration(milliseconds: 200),
                                   ),
                                 );
                               },
