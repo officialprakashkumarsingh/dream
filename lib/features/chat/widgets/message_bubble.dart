@@ -20,6 +20,8 @@ import '../../../core/models/chart_message_model.dart';
 import '../../../core/models/flashcard_message_model.dart';
 import '../../../core/models/quiz_message_model.dart';
 import '../../../core/models/vision_analysis_message_model.dart';
+import '../../../core/models/web_search_result_model.dart';
+import 'web_search_results_widget.dart';
 import '../../../shared/widgets/markdown_message.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../shared/widgets/thinking_animation.dart';
@@ -320,6 +322,11 @@ class _MessageBubbleState extends State<MessageBubble>
                   _buildQuizContent(widget.message as QuizMessage),
                 ] else if (widget.message is VisionAnalysisMessage) ...[
                   _buildVisionAnalysisContent(widget.message as VisionAnalysisMessage),
+                ] else if (widget.message is WebSearchMessage) ...[
+                  WebSearchResultsWidget(
+                    result: (widget.message as WebSearchMessage).searchResult,
+                    query: (widget.message as WebSearchMessage).query,
+                  ),
                 ] else ...[
                   // Regular message content with markdown support
                   MarkdownMessage(

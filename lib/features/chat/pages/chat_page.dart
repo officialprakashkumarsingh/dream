@@ -746,35 +746,78 @@ class _ChatPageState extends State<ChatPage> {
           final functionName = functionCall['name'];
           final arguments = jsonDecode(functionCall['arguments']);
 
+          // --- HANDLE TOOL CALLS ---
           if (functionName == 'generate_image') {
             final prompt = arguments['prompt'] as String;
-            // The AI has decided to generate an image.
-            // We don't need to add a new "user" message.
-            // We just need to add the generating placeholder and call the service.
+            final imageService = ImageService.instance;
+            final model = arguments['model'] as String? ?? imageService.selectedModel;
 
-            // Stop displaying the "thinking" message
+            // Update the "thinking" message to an image generating message
             setState(() {
-              _messages.removeAt(messageIndex);
+              _messages[messageIndex] = ImageMessage.generating(prompt, model);
             });
 
-            // Replicate the core logic of _handleImageGeneration without adding a new user message
-            final imageService = ImageService.instance;
-            // Use the model specified by the AI, or fall back to the default.
-            final model = arguments['model'] as String? ?? imageService.selectedModel;
-            final imageMessage = ImageMessage.generating(prompt, model);
-            _addMessage(imageMessage);
+            await _handleImageModelResponse(prompt, model, messageIndex, 1, 0);
 
-            _handleImageModelResponse(
-              prompt,
-              model,
-              _messages.length - 1,
-              1,
-              0,
-            );
+          } else if (functionName == 'web_search') {
+            final query = arguments['query'] as String;
+
+            // Update the "thinking" message to a "searching" message
+            setState(() {
+              _messages[messageIndex] = Message.assistant('Searching the web for: "$query"...', isStreaming: true);
+            });
+
+            try {
+              final searchResult = await WebSearchService.search(query);
+
+              // Replace the "searching" message with the results widget
+              setState(() {
+                _messages[messageIndex] = WebSearchMessage(
+                  id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
+                  query: query,
+                  searchResult: searchResult,
+                );
+              });
+
+              // Now, send the results back to the AI to get a summary
+              final newHistory = _messages.map((m) => m.toApiFormat()).toList();
+              final toolResultMessage = {
+                'role': 'tool',
+                'content': jsonEncode(searchResult), // Send the full results
+                'tool_call_id': toolCall['id'],
+              };
+              newHistory.add(toolResultMessage);
+
+              final summaryStream = await ApiService.sendMessage(
+                message: '', // No new user message, just summarizing tool results
+                model: model,
+                conversationHistory: newHistory,
+              );
+
+              // Add a new message bubble for the AI's summary
+              final summaryMessage = Message.assistant('', isStreaming: true);
+              _addMessage(summaryMessage);
+              final summaryMessageIndex = _messages.length - 1;
+
+              String summaryContent = '';
+              await for (final summaryChunk in summaryStream) {
+                summaryContent += summaryChunk;
+                setState(() {
+                  _messages[summaryMessageIndex] = _messages[summaryMessageIndex].copyWith(content: summaryContent);
+                });
+              }
+              // Finalize the summary message
+              setState(() {
+                _messages[summaryMessageIndex] = _messages[summaryMessageIndex].copyWith(isStreaming: false);
+              });
+
+            } catch (e) {
+              setState(() {
+                _messages[messageIndex] = Message.error('Web search failed: ${e.toString()}');
+              });
+            }
           }
           // Since a tool was called, we break the loop for this model's response.
-          // The result of the tool call would typically be sent back to the AI.
-          // For simplicity here, we'll just let the image generation create a new message.
           break;
         }
 
