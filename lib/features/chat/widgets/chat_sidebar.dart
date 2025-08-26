@@ -598,7 +598,7 @@ class _ChatSidebarState extends State<ChatSidebar> with SingleTickerProviderStat
                             CurvedAnimation(
                               parent: _listAnimationController,
                               curve: Interval(
-                                (1 / sessions.length) * index * 0.5,
+                                (1 / sessions.length) * index * 0.2, // Make stagger more subtle
                                 1.0,
                                 curve: Curves.easeOutCubic,
                               ),

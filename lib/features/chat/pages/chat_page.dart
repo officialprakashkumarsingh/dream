@@ -760,8 +760,12 @@ class _ChatPageState extends State<ChatPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             // Only auto-scroll if user hasn't manually scrolled away
             if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
-              // Jump to bottom (0.0) instantly during streaming for ultra smooth experience
-              _scrollController.jumpTo(0.0);
+              // Animate to bottom for a smoother feel than jumpTo
+              _scrollController.animateTo(
+                0.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+              );
             }
           });
         }

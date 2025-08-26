@@ -354,9 +354,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                         CurveTween(curve: curve),
                                       );
                                       
-                                      return SlideTransition(
-                                        position: animation.drive(tween),
-                                        child: child,
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: animation.drive(tween),
+                                          child: child,
+                                        ),
                                       );
                                     },
                                     transitionDuration: const Duration(milliseconds: 400),

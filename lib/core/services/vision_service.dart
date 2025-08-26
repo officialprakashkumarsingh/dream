@@ -2,14 +2,21 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class VisionService {
   static const String baseUrl = 'https://ahamai-api.officialprakashkrsingh.workers.dev';
-  static const String authToken = 'ahamaibyprakash25';
   
-  static final Map<String, String> _headers = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $authToken',
-  };
+  static Map<String, String> get _headers {
+    final apiKey = dotenv.env['API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('API_KEY not found in environment variables. Please set it in the .env file.');
+    }
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $apiKey',
+    };
+  }
 
   // Get available vision models
   static Future<List<VisionModel>> getVisionModels() async {
@@ -118,18 +125,18 @@ class VisionService {
         
         return controller.stream;
       } else {
-        print('Vision API error: ${streamedResponse.statusCode}');
         final responseBody = await streamedResponse.stream.bytesToString();
+        print('Vision API error: ${streamedResponse.statusCode}');
         print('Response: $responseBody');
-        throw Exception('Vision analysis failed: ${streamedResponse.statusCode}');
+        // Propagate the actual server error instead of a generic message
+        return Stream.value(
+            'Error: ${streamedResponse.reasonPhrase} (Code: ${streamedResponse.statusCode})\n\nDetails: $responseBody');
       }
     } catch (e) {
       print('Error in vision analysis: $e');
-      // Return error stream
-      final controller = StreamController<String>();
-      controller.add('Sorry, I encountered an error while analyzing the image. Please try again.');
-      controller.close();
-      return controller.stream;
+      // Return error stream with the specific exception
+      return Stream.value(
+          'An unexpected error occurred. Please check your connection and try again.\n\nDetails: ${e.toString()}');
     }
   }
 
