@@ -30,6 +30,8 @@ class WebSearchService {
             images: [],
             hasError: true,
             rawJson: response.body,
+            errorMessage:
+                'The web search service returned data in an unexpected format. This may be a temporary issue.',
           );
         }
       } else {
@@ -42,6 +44,8 @@ class WebSearchService {
           images: [],
           hasError: true,
           rawJson: response.body, // The body might have useful error info
+          errorMessage:
+              'The web search service is temporarily unavailable (Error ${response.statusCode}). Please try again later.',
         );
       }
     } catch (e) {
@@ -52,6 +56,8 @@ class WebSearchService {
         newsArticles: [],
         images: [],
         hasError: true,
+        errorMessage:
+            'A network error occurred while trying to search the web. Please check your connection and try again.',
         rawJson: '{"error": "A network or client-side error occurred: $e"}',
       );
     }

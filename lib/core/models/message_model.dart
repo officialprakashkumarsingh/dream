@@ -97,4 +97,13 @@ class WebSearchMessage extends Message {
           type: MessageType.assistant,
           timestamp: DateTime.now(),
         );
+
+  factory WebSearchMessage.fromJson(
+      Map<String, dynamic> json, Map<String, dynamic> metadata) {
+    return WebSearchMessage(
+      id: json['id'],
+      query: metadata['query'] ?? '',
+      searchResult: WebSearchResult.fromJson(metadata['searchResult']),
+    );
+  }
 }
