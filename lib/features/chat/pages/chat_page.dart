@@ -774,35 +774,51 @@ class _ChatPageState extends State<ChatPage> {
               final searchResult = await WebSearchService.search(query);
 
               if (searchResult.hasError) {
-                final errorMessageContent =
-                    'Sorry, the web search returned data in an unexpected format. '
-                    'This might be a temporary issue with the search provider.\n\n'
-                    '**Debug Info (for developer):**\n'
-                    '```json\n${searchResult.rawJson ?? 'No raw JSON available.'}\n```';
+                String finalErrorMessage;
+                if (searchResult.errorMessage != null) {
+                  // It's a server or network error, show the user-friendly message from the service.
+                  finalErrorMessage = searchResult.errorMessage!;
+                } else {
+                  // It's a parsing error, show the debug info.
+                  finalErrorMessage =
+                      'Sorry, the web search returned data in an unexpected format. '
+                      'This might be a temporary issue with the search provider.\n\n'
+                      '**Debug Info (for developer):**\n'
+                      '```json\n${searchResult.rawJson ?? 'No raw JSON available.'}\n```';
+                }
 
                 setState(() {
-                  _messages[messageIndex] = Message.error(errorMessageContent);
+                  _messages[messageIndex] = Message.error(finalErrorMessage);
                   if (modelIndex == totalModels - 1) {
                     _isLoading = false;
                   }
                 });
               } else {
+                final webSearchMessage = WebSearchMessage(
+                  id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
+                  query: query,
+                  searchResult: searchResult,
+                );
                 setState(() {
-                  _messages[messageIndex] = WebSearchMessage(
-                    id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
-                    query: query,
-                    searchResult: searchResult,
-                  );
+                  _messages[messageIndex] = webSearchMessage;
                 });
+                ChatHistoryService.instance.saveMessage(webSearchMessage);
 
                 final newHistory = _messages
                     .map((m) => m.toApiFormat())
                     .toList()
                     .cast<Map<String, dynamic>>()
                     .toList();
+                // Create a simplified list of results for the AI, as requested
+                final simplifiedResults =
+                    searchResult.webPages.map((page) => {
+                          'title': page.title,
+                          'snippet': page.snippet,
+                        }).toList();
+
                 final toolResultMessage = {
                   'role': 'tool',
-                  'content': jsonEncode(searchResult),
+                  'content': jsonEncode(simplifiedResults),
                   'tool_call_id': toolCall['id'] as String,
                 };
                 newHistory.add(toolResultMessage);

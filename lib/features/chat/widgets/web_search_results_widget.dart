@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/web_search_result_model.dart';
@@ -36,7 +37,16 @@ class WebSearchResultsWidget extends StatelessWidget {
           const SizedBox(height: 12),
           if (result.webPages.isNotEmpty) ...[
             _buildSectionHeader(context, 'Web Pages', CupertinoIcons.globe),
-            ...result.webPages.take(3).map((page) => _buildWebPageResult(context, page)),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: result.webPages.length,
+                itemBuilder: (context, index) {
+                  return _buildWebPageResult(context, result.webPages[index]);
+                },
+              ),
+            ),
             const SizedBox(height: 12),
           ],
           if (result.newsArticles.isNotEmpty) ...[
@@ -119,17 +129,19 @@ class WebSearchResultsWidget extends StatelessWidget {
                         ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    page.snippet,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.7),
-                        ),
+                  MarkdownBody(
+                    data: page.snippet,
+                    styleSheet: MarkdownStyleSheet.fromTheme(
+                      Theme.of(context),
+                    ).copyWith(
+                      p: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.7),
+                          ),
                     ),
+                  ),
                 ],
               ),
               ),

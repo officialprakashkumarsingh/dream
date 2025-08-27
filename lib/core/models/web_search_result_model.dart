@@ -6,6 +6,7 @@ class WebSearchResult {
   final List<ImageResult> images;
   final String? rawJson; // For debugging
   final bool hasError;
+  final String? errorMessage;
 
   WebSearchResult({
     required this.webPages,
@@ -13,6 +14,7 @@ class WebSearchResult {
     required this.images,
     this.rawJson,
     this.hasError = false,
+    this.errorMessage,
   });
 
   factory WebSearchResult.fromJson(Map<String, dynamic> json) {
