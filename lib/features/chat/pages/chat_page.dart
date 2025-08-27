@@ -172,9 +172,14 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 // Chat messages
                 Expanded(
-                  child: _isLoadingHistory
-                      ? _buildShimmerList()
-                      : (_messages.isEmpty ? _buildEmptyState() : _buildMessagesList()),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _isLoadingHistory
+                        ? _buildShimmerList()
+                        : (_messages.isEmpty
+                            ? _buildEmptyState()
+                            : _buildMessagesList()),
+                  ),
                 ),
 
                 // Templates quick access
@@ -713,13 +718,12 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _handleModelResponse(
     String content,
     String model,
-    List<Map<String, String>> history,
+    List<Map<String, dynamic>> history,
     int messageIndex,
     int totalModels,
     int modelIndex,
   ) async {
     try {
-      print('Starting response for model: $model at index: $messageIndex');
       final stream = await ApiService.sendMessage(
         message: content,
         model: model,
@@ -728,221 +732,198 @@ class _ChatPageState extends State<ChatPage> {
       );
 
       String accumulatedContent = '';
-      bool toolCallHandled = false; // Flag to indicate a tool call was processed
+      List<Map<String, dynamic>> accumulatedToolCalls = [];
 
-      // Add model name header for multiple models
       if (totalModels > 1) {
         accumulatedContent = '**${_formatModelName(model)}:**\n\n';
       }
 
-      int chunkCount = 0;
-      print('Starting to receive chunks for message at index: $messageIndex');
+      stream.listen(
+        (rawJson) {
+          try {
+            final json = jsonDecode(rawJson);
+            final delta = json['choices']?[0]?['delta'];
 
-      await for (final chunk in stream) {
-        if (chunk.startsWith('__TOOL_CALL__')) {
-          toolCallHandled = true; // Set the flag
-          // This is a tool call, not a text response.
-          final toolCallJson = chunk.substring('__TOOL_CALL__'.length);
-          final toolCalls = jsonDecode(toolCallJson) as List;
-          final toolCall = toolCalls.first; // Assuming one tool call for now
-          final functionCall = toolCall['function'];
-          final functionName = functionCall['name'];
-          final arguments = jsonDecode(functionCall['arguments']);
+            if (delta == null) return;
 
-          // --- HANDLE TOOL CALLS ---
-          if (functionName == 'generate_image') {
-            final prompt = arguments['prompt'] as String;
-            final imageService = ImageService.instance;
-            final imageModel =
-                arguments['model'] as String? ?? imageService.selectedModel;
-
-            setState(() {
-              _messages[messageIndex] = ImageMessage.generating(prompt, imageModel);
-            });
-
-            await _handleImageModelResponse(prompt, imageModel, messageIndex, 1, 0);
-          } else if (functionName == 'web_search') {
-            final query = arguments['query'] as String;
-
-            setState(() {
-              _messages[messageIndex] = Message.assistant(
-                  'Searching the web for: "$query"...',
-                  isStreaming: true);
-            });
-
-            try {
-              final searchResult = await WebSearchService.search(query);
-
-              if (searchResult.hasError) {
-                String finalErrorMessage;
-                if (searchResult.errorMessage != null) {
-                  // It's a server or network error, show the user-friendly message from the service.
-                  finalErrorMessage = searchResult.errorMessage!;
-                } else {
-                  // It's a parsing error, show the debug info.
-                  finalErrorMessage =
-                      'Sorry, the web search returned data in an unexpected format. '
-                      'This might be a temporary issue with the search provider.\n\n'
-                      '**Debug Info (for developer):**\n'
-                      '```json\n${searchResult.rawJson ?? 'No raw JSON available.'}\n```';
-                }
-
+            // Accumulate content
+            if (delta['content'] != null) {
+              accumulatedContent += delta['content'] as String;
+              if (mounted) {
                 setState(() {
-                  _messages[messageIndex] = Message.error(finalErrorMessage);
-                  if (modelIndex == totalModels - 1) {
-                    _isLoading = false;
-                  }
-                });
-              } else {
-                final webSearchMessage = WebSearchMessage(
-                  id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
-                  query: query,
-                  searchResult: searchResult,
-                );
-                setState(() {
-                  _messages[messageIndex] = webSearchMessage;
-                });
-                ChatHistoryService.instance.saveMessage(webSearchMessage);
-
-                final newHistory = _messages
-                    .map((m) => m.toApiFormat())
-                    .toList()
-                    .cast<Map<String, dynamic>>()
-                    .toList();
-                // Create a simplified list of results for the AI, as requested
-                final simplifiedResults =
-                    searchResult.webPages.map((page) => {
-                          'title': page.title,
-                          'snippet': page.snippet,
-                        }).toList();
-
-                final toolResultMessage = {
-                  'role': 'tool',
-                  'content': jsonEncode(simplifiedResults),
-                  'tool_call_id': toolCall['id'] as String,
-                };
-                newHistory.add(toolResultMessage);
-
-                final summaryStream = await ApiService.sendMessage(
-                  message: '',
-                  model: model,
-                  conversationHistory: newHistory,
-                );
-
-                final summaryMessage = Message.assistant('', isStreaming: true);
-                _addMessage(summaryMessage);
-                final summaryMessageIndex = _messages.length - 1;
-
-                String summaryContent = '';
-                await for (final summaryChunk in summaryStream) {
-                  summaryContent += summaryChunk;
-                  setState(() {
-                    _messages[summaryMessageIndex] = _messages[summaryMessageIndex]
-                        .copyWith(content: summaryContent);
-                  });
-                }
-                setState(() {
-                  _messages[summaryMessageIndex] = _messages[summaryMessageIndex]
-                      .copyWith(isStreaming: false);
-                  if (modelIndex == totalModels - 1) {
-                    _isLoading = false;
-                  }
+                  _messages[messageIndex] = _messages[messageIndex].copyWith(
+                    content: accumulatedContent,
+                    isStreaming: true,
+                  );
                 });
               }
-            } catch (e) {
-              setState(() {
-                _messages[messageIndex] = Message.error(
-                    'Web search failed unexpectedly: ${e.toString()}');
-                if (modelIndex == totalModels - 1) {
-                  _isLoading = false;
+            }
+
+            // Accumulate tool calls
+            if (delta['tool_calls'] != null) {
+              final toolCalls = delta['tool_calls'] as List;
+              for (final toolCallChunk in toolCalls) {
+                final index = toolCallChunk['index'] as int;
+                if (index >= accumulatedToolCalls.length) {
+                  accumulatedToolCalls.add(toolCallChunk as Map<String, dynamic>);
+                } else {
+                  // Merge with existing tool call chunk
+                  final existingCall = accumulatedToolCalls[index];
+                  (existingCall['function']['arguments'] as String?) =
+                      (existingCall['function']['arguments'] ?? '') +
+                          (toolCallChunk['function']['arguments'] as String? ?? '');
                 }
-              });
+              }
             }
+          } catch (e) {
+            print('Error processing stream chunk: $e');
           }
-          // Since a tool was called, we break the loop.
-          break;
-        }
-
-        accumulatedContent += chunk;
-        chunkCount++;
-
-        if (chunkCount == 1) {
-          print(
-              'First chunk received: ${chunk.substring(0, chunk.length.clamp(0, 50))}...');
-        }
-
-        if (mounted && messageIndex < _messages.length) {
-          setState(() {
-            _messages[messageIndex] = _messages[messageIndex].copyWith(
+        },
+        onDone: () async {
+          if (mounted) {
+            // Final update for the assistant's message
+            final finalAssistantMessage = _messages[messageIndex].copyWith(
               content: accumulatedContent,
-              isStreaming: true,
+              isStreaming: false,
+              toolCalls: accumulatedToolCalls.isNotEmpty ? accumulatedToolCalls : null,
             );
-          });
-        } else {
-          print(
-              'Warning: Cannot update message - mounted: $mounted, messageIndex: $messageIndex, messages.length: ${_messages.length}');
-        }
+            setState(() {
+              _messages[messageIndex] = finalAssistantMessage;
+            });
+            ChatHistoryService.instance.saveMessage(finalAssistantMessage);
 
-        if (chunkCount % 2 == 0) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_autoScrollEnabled &&
-                _scrollController.hasClients &&
-                !_userIsScrolling) {
-              _scrollController.animateTo(
-                0.0,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-              );
+            // If there are tool calls, handle them now
+            if (accumulatedToolCalls.isNotEmpty) {
+              await _handleToolCalls(
+                  accumulatedToolCalls, model, totalModels, modelIndex);
+            } else {
+              // No tool calls, just finalize the loading state
+              if (modelIndex == totalModels - 1) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
             }
-          });
-        }
-      }
-
-      // If a tool call was handled, the function's work is done.
-      if (toolCallHandled) {
-        return;
-      }
-
-      // This part now only executes for regular, non-tool-call responses.
-      print(
-          'Streaming complete. Total chunks: $chunkCount, Content length: ${accumulatedContent.length}');
-
-      if (mounted && messageIndex < _messages.length) {
-        setState(() {
-          _messages[messageIndex] = _messages[messageIndex].copyWith(
-            content: accumulatedContent,
-            isStreaming: false,
-          );
-
-          if (modelIndex == totalModels - 1) {
-            _isLoading = false;
           }
-        });
-        print('Message marked as complete at index: $messageIndex');
-
-        if (messageIndex < _messages.length) {
-          ChatHistoryService.instance
-              .saveMessage(
-                _messages[messageIndex],
-                modelName: model,
-              )
-              .catchError((e) {
-            print('Error saving assistant message: $e');
-          });
-        }
-      }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _messages[messageIndex] = Message.error(
+                'Error from ${_formatModelName(model)}: ${e.toString()}',
+              );
+              if (modelIndex == totalModels - 1) {
+                _isLoading = false;
+              }
+            });
+          }
+        },
+      );
     } catch (e) {
-      if (mounted && messageIndex < _messages.length) {
+      if (mounted) {
         setState(() {
           _messages[messageIndex] = Message.error(
             'Error from ${_formatModelName(model)}: Please try again.',
           );
-
           if (modelIndex == totalModels - 1) {
             _isLoading = false;
           }
         });
       }
+    }
+  }
+
+  Future<void> _handleToolCalls(
+    List<Map<String, dynamic>> toolCalls,
+    String model,
+    int totalModels,
+    int modelIndex,
+  ) async {
+    // For now, assume one tool call per response
+    final toolCall = toolCalls.first;
+    final functionCall = toolCall['function'];
+    final functionName = functionCall['name'];
+    final arguments = jsonDecode(functionCall['arguments']);
+
+    // Add a placeholder message for the tool result
+    final toolMessagePlaceholder = Message.assistant('...', isStreaming: true);
+    _addMessage(toolMessagePlaceholder);
+    final toolMessageIndex = _messages.length - 1;
+
+    dynamic toolResultContent;
+    String toolResultMessageType = 'text'; // default
+
+    if (functionName == 'web_search') {
+      final query = arguments['query'] as String;
+      setState(() {
+        _messages[toolMessageIndex] = Message.assistant(
+            'Searching the web for: "$query"...',
+            isStreaming: false);
+      });
+
+      try {
+        final searchResult = await WebSearchService.search(query);
+        if (searchResult.hasError) {
+          toolResultContent = searchResult.errorMessage ?? 'Web search failed.';
+          setState(() {
+            _messages[toolMessageIndex] = Message.error(toolResultContent as String);
+          });
+        } else {
+          final webSearchMessage = WebSearchMessage(
+            id: 'web_search_${DateTime.now().millisecondsSinceEpoch}',
+            query: query,
+            searchResult: searchResult,
+          );
+          setState(() {
+            _messages[toolMessageIndex] = webSearchMessage;
+          });
+          ChatHistoryService.instance.saveMessage(webSearchMessage);
+
+          // For summarization, send back a simplified version
+          toolResultContent = searchResult.webPages
+              .map((p) => {'title': p.title, 'snippet': p.snippet})
+              .toList();
+        }
+      } catch (e) {
+        toolResultContent = 'Web search failed unexpectedly: ${e.toString()}';
+        setState(() {
+          _messages[toolMessageIndex] = Message.error(toolResultContent as String);
+        });
+      }
+    }
+
+    // After handling all tools, send results back to the model for summary
+    if (toolResultContent != null) {
+      final newHistory = _messages.map((m) => m.toApiFormat()).toList();
+
+      final toolResultMessage = {
+        'role': 'tool',
+        'content': jsonEncode(toolResultContent),
+        'tool_call_id': toolCall['id'] as String,
+      };
+      newHistory.add(toolResultMessage);
+
+      // Add a new message for the final summary
+      final summaryMessage = Message.assistant('', isStreaming: true);
+      _addMessage(summaryMessage);
+      final summaryMessageIndex = _messages.length - 1;
+
+      // Get summary stream
+      await _handleModelResponse(
+        '', // No new user message, just summarizing
+        model,
+        newHistory,
+        summaryMessageIndex,
+        totalModels,
+        modelIndex,
+      );
+    }
+
+    // Final loading state check
+    if (modelIndex == totalModels - 1) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 

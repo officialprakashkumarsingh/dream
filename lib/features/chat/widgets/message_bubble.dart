@@ -384,6 +384,8 @@ class _MessageBubbleState extends State<MessageBubble>
                         // Don't show export here - it's already in the flashcard preview
                       ] else if (widget.message is QuizMessage) ...[
                         // Don't show export here - it's already in the quiz preview
+                      ] else if (widget.message is WebSearchMessage) ...[
+                        // Don't show any actions for web search results
                       ] else ...[
                         // For text messages, show all options
                         // Copy - always visible for AI messages

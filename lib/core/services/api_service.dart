@@ -147,33 +147,11 @@ class ApiService {
             .where((line) => line.isNotEmpty && line.startsWith('data: '))
             .listen(
           (line) {
-            try {
-              final data = line.substring(6); // Remove 'data: ' prefix
-              if (data.trim() == '[DONE]') {
-                controller.close();
-                return;
-              }
-              
-              final json = jsonDecode(data);
-              final delta = json['choices']?[0]?['delta'];
-              
-              // Handle regular text content
-              if (delta?['content'] != null) {
-                final content = delta['content'] as String;
-                if (content.isNotEmpty) {
-                  controller.add(content);
-                }
-              }
-
-              // Handle tool calls
-              if (delta?['tool_calls'] != null) {
-                // The API is asking to use a tool.
-                // We'll encode this as a special string and handle it on the client.
-                final toolCalls = jsonEncode(delta['tool_calls']);
-                controller.add('__TOOL_CALL__$toolCalls');
-              }
-            } catch (e) {
-              // Skip malformed chunks
+            final data = line.substring(6); // Remove 'data: ' prefix
+            if (data.trim() == '[DONE]') {
+              controller.close();
+            } else {
+              controller.add(data); // Pass the raw JSON string directly
             }
           },
           onError: (error) => controller.addError(error),
