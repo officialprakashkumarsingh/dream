@@ -768,10 +768,13 @@ class _ChatPageState extends State<ChatPage> {
                   accumulatedToolCalls.add(toolCallChunk as Map<String, dynamic>);
                 } else {
                   // Merge with existing tool call chunk
-                  final existingCall = accumulatedToolCalls[index];
-                  (existingCall['function']['arguments'] as String?) =
-                      (existingCall['function']['arguments'] ?? '') +
-                          (toolCallChunk['function']['arguments'] as String? ?? '');
+                  final Map<String, dynamic> existingCall =
+                      accumulatedToolCalls[index];
+                  final Map<String, dynamic> function = existingCall['function'];
+                  final String existingArgs = function['arguments'] as String? ?? '';
+                  final String newArgsChunk =
+                      toolCallChunk['function']['arguments'] as String? ?? '';
+                  function['arguments'] = existingArgs + newArgsChunk;
                 }
               }
             }

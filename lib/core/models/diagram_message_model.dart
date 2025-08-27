@@ -11,6 +11,7 @@ class DiagramMessage extends Message {
     required DateTime timestamp,
     bool isStreaming = false,
     bool hasError = false,
+    super.toolCalls,
   }) : super(
     id: id,
     content: mermaidCode,
@@ -58,6 +59,7 @@ class DiagramMessage extends Message {
     DateTime? timestamp,
     bool? isStreaming,
     bool? hasError,
+    List<Map<String, dynamic>>? toolCalls,
     String? prompt,
     String? mermaidCode,
   }) {
@@ -70,6 +72,7 @@ class DiagramMessage extends Message {
       timestamp: timestamp ?? this.timestamp,
       isStreaming: isStreaming ?? this.isStreaming,
       hasError: hasError ?? this.hasError,
+      toolCalls: toolCalls ?? this.toolCalls,
     );
   }
 
