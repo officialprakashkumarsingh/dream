@@ -11,6 +11,7 @@ class VisionAnalysisMessage extends Message {
     this.analysisPrompt,
     this.analysisResult,
     bool hasError = false,
+    super.toolCalls,
   }) : super(
           id: id,
           content: analysisResult ?? '',
@@ -21,21 +22,25 @@ class VisionAnalysisMessage extends Message {
         );
 
   @override
-  Message copyWith({
+  VisionAnalysisMessage copyWith({
     String? id,
     String? content,
     MessageType? type,
     DateTime? timestamp,
     bool? isStreaming,
     bool? hasError,
+    List<Map<String, dynamic>>? toolCalls,
+    bool? isAnalyzing,
+    String? analysisPrompt,
+    String? analysisResult,
   }) {
-    // For VisionAnalysisMessage, we treat content as analysisResult
     return VisionAnalysisMessage(
       id: id ?? this.id,
-      isAnalyzing: isStreaming ?? this.isAnalyzing,
-      analysisPrompt: analysisPrompt,
-      analysisResult: content ?? this.analysisResult,
+      isAnalyzing: isAnalyzing ?? this.isAnalyzing,
+      analysisPrompt: analysisPrompt ?? this.analysisPrompt,
+      analysisResult: content ?? analysisResult ?? this.analysisResult,
       hasError: hasError ?? this.hasError,
+      toolCalls: toolCalls ?? this.toolCalls,
     );
   }
 }

@@ -11,6 +11,7 @@ class PresentationMessage extends Message {
     required DateTime timestamp,
     bool isStreaming = false,
     bool hasError = false,
+    super.toolCalls,
   }) : super(
     id: id,
     content: _slidesToMarkdown(slides),
@@ -69,6 +70,7 @@ class PresentationMessage extends Message {
     DateTime? timestamp,
     bool? isStreaming,
     bool? hasError,
+    List<Map<String, dynamic>>? toolCalls,
     String? prompt,
     List<PresentationSlide>? slides,
   }) {
@@ -79,6 +81,7 @@ class PresentationMessage extends Message {
       timestamp: timestamp ?? this.timestamp,
       isStreaming: isStreaming ?? this.isStreaming,
       hasError: hasError ?? this.hasError,
+      toolCalls: toolCalls ?? this.toolCalls,
     );
   }
 
