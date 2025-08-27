@@ -9,6 +9,7 @@ class Message {
   final DateTime timestamp;
   final bool isStreaming;
   final bool hasError;
+  final List<Map<String, dynamic>>? toolCalls;
 
   const Message({
     required this.id,
@@ -17,6 +18,7 @@ class Message {
     required this.timestamp,
     this.isStreaming = false,
     this.hasError = false,
+    this.toolCalls,
   });
 
   Message copyWith({
@@ -26,6 +28,7 @@ class Message {
     DateTime? timestamp,
     bool? isStreaming,
     bool? hasError,
+    List<Map<String, dynamic>>? toolCalls,
   }) {
     return Message(
       id: id ?? this.id,
@@ -34,14 +37,19 @@ class Message {
       timestamp: timestamp ?? this.timestamp,
       isStreaming: isStreaming ?? this.isStreaming,
       hasError: hasError ?? this.hasError,
+      toolCalls: toolCalls ?? this.toolCalls,
     );
   }
 
-  Map<String, String> toApiFormat() {
-    return {
+  Map<String, dynamic> toApiFormat() {
+    final map = <String, dynamic>{
       'role': type == MessageType.user ? 'user' : 'assistant',
       'content': content,
     };
+    if (toolCalls != null) {
+      map['tool_calls'] = toolCalls;
+    }
+    return map;
   }
 
   factory Message.user(String content) {

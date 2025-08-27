@@ -23,7 +23,6 @@ class WebSearchResultsWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,6 +80,14 @@ class WebSearchResultsWidget extends StatelessWidget {
     );
   }
 
+  String _htmlToMarkdown(String html) {
+    return html
+        .replaceAll('<strong>', '**')
+        .replaceAll('</strong>', '**')
+        .replaceAll('<b>', '**')
+        .replaceAll('</b>', '**');
+  }
+
   Widget _buildWebPageResult(BuildContext context, WebPageResult page) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -130,7 +137,7 @@ class WebSearchResultsWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   MarkdownBody(
-                    data: page.snippet,
+                    data: _htmlToMarkdown(page.snippet),
                     styleSheet: MarkdownStyleSheet.fromTheme(
                       Theme.of(context),
                     ).copyWith(
